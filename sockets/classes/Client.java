@@ -1,10 +1,8 @@
 package sockets.classes;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class Client {
 	private String address;
@@ -21,16 +19,12 @@ public class Client {
 			Socket clientSocket = new Socket(address, port); 
 			DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
 			DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-			String packetString = "";
-			for (Packet packet : packets) packetString += packet.toString();
-			dos.writeUTF(packetString.toString());
+			for (Packet packet : packets) packet.write(dos);
 			dos.flush();
-			String packetBack = dis.readUTF();
 			dos.close();
+			packetEventManager.executePackets(dis);
 			dis.close();
 			clientSocket.close();
-			Packet[] packetsBack = Packet.getPacketsFromString(packetBack);
-			packetEventManager.executePackets(packetsBack);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -41,15 +35,12 @@ public class Client {
 			Socket clientSocket = new Socket(address, port); 
 			DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
 			DataInputStream dis = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-			String packetString = packet.toString();
-			dos.writeUTF(packetString.toString());
+			packet.write(dos);
 			dos.flush();
-			String packetBack = dis.readUTF();
 			dos.close();
+			packetEventManager.executePackets(dis);
 			dis.close();
 			clientSocket.close();
-			Packet[] packets = Packet.getPacketsFromString(packetBack);
-			packetEventManager.executePackets(packets);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

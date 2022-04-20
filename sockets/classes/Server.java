@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class Server {
 	private Socket socket;
@@ -14,8 +15,8 @@ public class Server {
 	private DataOutputStream dos;
 	private Thread serverRun; 
 	private boolean run = true;
-	private String totalPacket;
-	private PacketEventManager packetEventManager= new PacketEventManager();
+	private ArrayList<Packet> packetsToSend = new ArrayList<>();
+	private PacketEventManager packetEventManager = new PacketEventManager();
 	
 	public Server(int port) throws Exception{
 		server = new ServerSocket(port);
@@ -36,13 +37,14 @@ public class Server {
 	
 	public void recievePacket() {
 		try {
-			totalPacket = "";
 			socket = server.accept();
 			dis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 			dos = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
-			String packet = dis.readUTF();
-			packetEventManager.executePackets(packet);
-			dos.writeUTF(totalPacket);
+			packetEventManager.executePackets(dis);
+			for(Packet packet : packetsToSend) {
+				packet.write(dos);
+			}
+			packetsToSend.clear();
 			dos.flush();
 			dos.close();
 			dis.close();
@@ -62,6 +64,6 @@ public class Server {
 	}
 	
 	public void sendPacket(Packet packet) {
-		totalPacket += packet.toString();
+		packetsToSend.add(packet);
 	}
 }

@@ -1,5 +1,8 @@
 package sockets.classes;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +17,6 @@ public class Packet {
 	private final Short[] shorts;
 	private final Boolean[] booleans;
 	private final String name;
-	private final String build;
 	
 	public Packet(String name, Double[] doubles, Integer[] ints, Byte[] bytes, String[] strings, Long[] longs, Float[] floats,
 			Character[] chars, Short[] shorts, Boolean[] booleans) {
@@ -28,27 +30,69 @@ public class Packet {
 		this.chars = chars;
 		this.shorts = shorts;
 		this.booleans = booleans;
-		StringBuilder assemble = new StringBuilder(name);
-		assemble.append('\u001c');
-		for (int i = 0; i < doubles.length; i++) assemble.append(doubles[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < ints.length; i++) assemble.append(ints[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < bytes.length; i++) assemble.append(bytes[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < strings.length; i++) assemble.append(strings[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < longs.length; i++) assemble.append(longs[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < floats.length; i++) assemble.append(floats[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < chars.length; i++) assemble.append(chars[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < shorts.length; i++) assemble.append(shorts[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		for (int i = 0; i < booleans.length; i++) assemble.append(booleans[i]); assemble.append('\u001b');
-		assemble.append('\u001c');
-		build = assemble.toString();
+	}
+
+	public void write(DataOutputStream stream) throws IOException {
+		stream.writeUTF(name);
+		stream.writeInt(doubles.length);
+		for(double d : doubles) stream.writeDouble(d);
+		stream.writeInt(ints.length);
+		for(int i : ints) stream.writeInt(i);
+		stream.writeInt(bytes.length);
+		for(byte b : bytes) stream.writeByte(b);
+		stream.writeInt(strings.length);
+		for(String s : strings) stream.writeUTF(s);
+		stream.writeInt(longs.length);
+		for(long l : longs) stream.writeLong(l);
+		stream.writeInt(floats.length);
+		for(float f : floats) stream.writeFloat(f);
+		stream.writeInt(chars.length);
+		for(char c : chars) stream.writeChar(c);
+		stream.writeInt(shorts.length);
+		for(short s : shorts) stream.writeShort(s);
+		stream.writeInt(booleans.length);
+		for(boolean b : booleans) stream.writeBoolean(b);
+	}
+
+	public static Packet read(DataInputStream stream) throws IOException {
+		String name = stream.readUTF();
+		Double[] doubles = new Double[stream.readInt()];
+		for(int i = 0; i < doubles.length; i++) {
+			doubles[i] = stream.readDouble();
+		}
+		Integer[] ints = new Integer[stream.readInt()];
+		for(int i = 0; i < ints.length; i++) {
+			ints[i] = stream.readInt();
+		}
+		Byte[] bytes = new Byte[stream.readInt()];
+		for(int i = 0; i < bytes.length; i++) {
+			bytes[i] = stream.readByte();
+		}
+		String[] strings = new String[stream.readInt()];
+		for(int i = 0; i < strings.length; i++) {
+			strings[i] = stream.readUTF();
+		}
+		Long[] longs = new Long[stream.readInt()];
+		for(int i = 0; i < longs.length; i++) {
+			longs[i] = stream.readLong();
+		}
+		Float[] floats = new Float[stream.readInt()];
+		for(int i = 0; i < floats.length; i++) {
+			floats[i] = stream.readFloat();
+		}
+		Character[] chars = new Character[stream.readInt()];
+		for(int i = 0; i < chars.length; i++) {
+			chars[i] = stream.readChar();
+		}
+		Short[] shorts = new Short[stream.readInt()];
+		for(int i = 0; i < shorts.length; i++) {
+			shorts[i] = stream.readShort();
+		}
+		Boolean[] booleans = new Boolean[stream.readInt()];
+		for(int i = 0; i < booleans.length; i++) {
+			booleans[i] = stream.readBoolean();
+		}
+		return new Packet(name, doubles, ints, bytes, strings, longs, floats, chars, shorts, booleans);
 	}
 	
 	public Double[] getDoubles() {
@@ -127,11 +171,6 @@ public class Packet {
 		return name;
 	}
 	
-	@Override
-	public String toString() {
-		return build;
-	}
-	
 	private static enum Type {
 		DOUBLE(0),
 		INT(1),
@@ -156,98 +195,6 @@ public class Packet {
 		public static Type assess(int value) {
 			return Type.values()[value];
 		}
-	}
-	
-	public static Packet[] getPacketsFromString(String string) {
-		List<String> map = new ArrayList<String>();
-		List<Type> typeMap = new ArrayList<Type>();
-		List<Packet> packets = new ArrayList<Packet>();
-		StringBuilder builder = new StringBuilder();
-		int type = 0;
-		boolean nameFound = false;
-		for (int i = 0; i < string.length(); i++) {
-			if (string.charAt(i) == '\u001b' || string.charAt(i) == '\u001c') {
-				map.add(builder.toString());
-				typeMap.add(Type.assess(type));
-				builder = new StringBuilder();
-				if (string.charAt(i) == '\u001c') {
-					if (nameFound) {
-						type++;						
-					} else {
-						nameFound = true;
-					}
-				}
-			} else {
-				builder.append(string.charAt(i));
-			}
-			if (type == 9) {
-				if (builder.length() != 0) map.add(builder.toString());	
-				type = 0;
-				nameFound = false;
-				packets.add(parseData(map, typeMap));
-				map.clear();
-				typeMap.clear();
-			}
-		}
-		return packets.toArray(new Packet[0]);
-	}
-	
-	private static Packet parseData(List<String> map, List<Type> typeMap) {
-		List<Double> doubles = new ArrayList<Double>();
-		List<Integer> ints = new ArrayList<Integer>();
-		List<Byte> bytes = new ArrayList<Byte>();
-		List<String> strings = new ArrayList<String>();
-		List<Long> longs = new ArrayList<Long>();
-		List<Float> floats = new ArrayList<Float>();
-		List<Character> chars = new ArrayList<Character>();
-		List<Short> shorts = new ArrayList<Short>();
-		List<Boolean> booleans = new ArrayList<Boolean>();
-		for (int i = 1; i < map.size(); i++) {
-			String s = map.get(i);
-			if (s.length() == 0) continue;
-			int value = typeMap.get(i).getValue();
-			switch (value) {
-			case 0:
-				doubles.add(Double.parseDouble(s));
-				break;
-			case 1:
-				ints.add(Integer.parseInt(s));
-				break;
-			case 2:
-				bytes.add(Byte.parseByte(s));
-				break;
-			case 3:
-				strings.add(s);
-				break;
-			case 4:
-				longs.add(Long.parseLong(s));
-				break;
-			case 5:
-				floats.add(Float.parseFloat(s));
-				break;
-			case 6:
-				chars.add(s.charAt(0));
-				break;
-			case 7:
-				shorts.add(Short.parseShort(s));
-				break;
-			case 8:
-				booleans.add(Boolean.parseBoolean(s));
-				break;
-			}
-		}
-		return new Packet(
-				map.get(0),
-				doubles.toArray(new Double[0]),
-				ints.toArray(new Integer[0]),
-				bytes.toArray(new Byte[0]),
-				strings.toArray(new String[0]),
-				longs.toArray(new Long[0]),
-				floats.toArray(new Float[0]),
-				chars.toArray(new Character[0]),
-				shorts.toArray(new Short[0]),
-				booleans.toArray(new Boolean[0])
-				);
 	}
 	
 	public static class PacketBuilder {
